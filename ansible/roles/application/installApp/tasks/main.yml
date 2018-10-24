@@ -26,7 +26,6 @@
 
 - name: Cache clear Prod && Dev
   shell: cd {{ application_path }} && php bin/console c:c --env={{ item }}
-  chdir: "{{ application_path }}"
   with_items:
     - "dev"
     - "prod"
