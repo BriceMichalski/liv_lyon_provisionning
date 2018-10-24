@@ -35,7 +35,7 @@ dev_env_enable: true
 parameters:
     database_host: 127.0.0.1
     database_port: null
-    database_name: ib_data
+    database_name: liv_lyon_data
     database_user: root
     database_password: root
     mailer_transport: gmail
