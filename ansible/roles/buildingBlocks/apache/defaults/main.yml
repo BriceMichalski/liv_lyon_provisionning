@@ -1,5 +1,5 @@
 ---
-apache_enablerepo: ""
+apache_enablerepo: "epel,remi"
 
 apache_listen_ip: "*"
 apache_listen_port: 80
