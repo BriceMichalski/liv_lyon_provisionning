@@ -4,3 +4,5 @@
 server:
     timezone: Europe/Paris
     download_path: /tmp
+
+github_repo_sources: "https://github.com/BriceMichalski/liv_lyon_sources.git"

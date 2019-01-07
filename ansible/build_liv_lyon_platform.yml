@@ -33,8 +33,3 @@
     - { role: buildingBlocks/php-mysql, tags: [webserver] }
     - { role: buildingBlocks/apache-php-fpm, tags: [webserver]}
     - { role: buildingBlocks/composer, tags: [webserver]}
-
-- name: Application settings
-  hosts: front
-  roles:
-    - { role: application/installApp, tags: [application]}

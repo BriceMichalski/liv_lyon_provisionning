@@ -1,9 +1,8 @@
 application_path: #
-
 parameters:
     database_host: 127.0.0.1
     database_port: null
-    database_name: ib_data
+    database_name: dbName
     database_user: dbUser
     database_password: dbPass
     mailer_transport: gmail
