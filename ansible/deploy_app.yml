@@ -1,0 +1,5 @@
+---
+- name: Application settings
+  hosts: front
+  roles:
+    - { role: application/installApp, tags: [application]}
