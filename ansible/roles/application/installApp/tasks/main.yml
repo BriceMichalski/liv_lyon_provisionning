@@ -43,7 +43,7 @@
 - name: Ensure Apache is sessions directory owner
   become: yes
   file:
-    path: '{{ application_path }}/var/sessions'
+    path: '/var/lib/php/sessions'
     state: directory
     owner: '{{ apache_user }}'
     group: '{{ apache_group }}'
