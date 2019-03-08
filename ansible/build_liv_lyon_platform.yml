@@ -30,7 +30,7 @@
   become: yes
   roles:
     - { role: geerlingguy.php-versions }
+    - { role: geerlingguy.apache-php-fpm }
     - { role: geerlingguy.php }
     - { role: geerlingguy.php-mysql }
-    - { role: geerlingguy.apache-php-fpm }
     - { role: geerlingguy.composer }

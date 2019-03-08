@@ -8,9 +8,9 @@
 #############################
 github_sources_url: "https://github.com/BriceMichalski/liv_lyon_sources"
 temp_workspace: /tmp/deployment-workspace
-application_branch: feature/map
-application_path: /appli
-dev_env: false
+application_branch: develop
+application_path: /vagrant/sources
+dev_env: true
 
 #############################
 ##    App Configuration    ##
@@ -26,7 +26,6 @@ parameters:
     mailer_user: mailer.dev.brice@gmail.com
     mailer_password: bar
     secret: livlyon2019
-    paypal_env: sandbox #or production
 
 ###########################
 ##   SYSTEM PARAMETERS   ##
@@ -63,9 +62,9 @@ apache_user: vagrant
 apache_group: vagrant
 apache_vhosts:
   - servername: "local.dev"
-    documentroot: "{{ application_path}}/current/web"
+    documentroot: "/vagrant/sources/web"
     extra_parameters: |
-          ProxyPassMatch ^/(.*\.php(/.*)?)$ "fcgi://127.0.0.1:9000{{ application_path}}/current/web"
+          ProxyPassMatch ^/(.*\.php(/.*)?)$ "fcgi://127.0.0.1:9000/vagrant/sources/web"
 
 #############################
 ##   PHP Configuration     ##
@@ -85,6 +84,8 @@ php_packages:
   - php-pecl-apcu
   - php-xml
   - php-intl
+  - php-fpm
+  - php-opcache
 php_enable_php_fpm: true
 php_fpm_pool_user: '{{ apache_user }}'
 php_fpm_pool_group: '{{ apache_group }}'

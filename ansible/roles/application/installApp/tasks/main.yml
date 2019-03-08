@@ -1,4 +1,19 @@
 ---
+
+# current -> /appli/releases/2.1.0/
+# ├── releases
+# │   ├── 1.0.0
+# │   ├── 1.0.1
+# │   ├── 1.0.2
+# │   ├── 1.2.0
+# │   └── 2.1.0
+# ├── revisions.log
+# └── shared
+#     └── <linked_files and linked_dirs>
+#
+# project root : /appli
+# apache doc root : /appli/current/web
+
 - name: Create worksapce
   file:
     path: "{{ temp_workspace }}"
@@ -33,6 +48,7 @@
   stat:
     path: "{{ application_path }}/releases/{{ app_version }}/"
   register: app_version_exist
+  when: not dev_env
 
 - name: Create Capistrano Directory structure
   file:
@@ -40,7 +56,7 @@
     state: directory
     owner: "{{ apache_user }}"
     group: "{{ apache_group }}"
-    mode: 0750
+    mode: 0755
   with_items:
     - "{{ application_path }}"
     - "{{ application_path }}/logs"
@@ -71,15 +87,24 @@
     arguments: --no-scripts
   when: dev_env
 
+- name: Ensure Apache is sessions directory owner
+  become: yes
+  shell: "chmod 777 -R {{ application_path }}/releases/{{ app_version }}/web/"
+
 - name: Composer install
-  composer:
-    command: install
-    working_dir: "{{ application_path }}/releases/{{ app_version }}"
-    arguments: --no-scripts --no-dev --optimize-autoloader
+  shell: 'composer install --no-scripts'
+  args:
+    chdir: "{{ application_path }}/releases/{{ app_version }}"
   when: not dev_env
 
+- name: Install assets
+  shell: "php bin/console assets:install"
+  args:
+    chdir: "{{ application_path }}/releases/{{ app_version }}"
+
 - name: Cache clear Prod
-  shell: php bin/console cache:clear --env=prod --no-debug
+  become: yes
+  shell: rm -rf {{ application_path }}/releases/{{ app_version }}/var/cache/prod
   when: not dev_env
   args:
     chdir: "{{ application_path }}/releases/{{ app_version }}"
@@ -106,29 +131,10 @@
     - { dest: '/var/www/html/web', src: '{{ application_path }}/current/web/' }
   when: not dev_env
 
-- name: Ensure Apache is cache directory owner
-  become: yes
-  file:
-    path: "{{ application_path }}/releases/{{ app_version }}/var/cache/"
-    state: directory
-    owner: '{{ apache_user }}'
-    group: '{{ apache_group }}'
-    mode: 775
-  when: "not dev_env"
-
 - name: Ensure Apache is sessions directory owner
   become: yes
   file:
     path: '/var/lib/php/sessions'
-    state: directory
-    owner: '{{ apache_user }}'
-    group: '{{ apache_group }}'
-    mode: 775
-
-- name: Ensure Apache is logs directory owner
-  become: yes
-  file:
-    path: '{{ apache_user }}/var/logs'
     state: directory
     owner: '{{ apache_user }}'
     group: '{{ apache_group }}'
@@ -141,7 +147,7 @@
     chdir: "{{ application_path }}"
 
 - name: Update database schema for prod
-  shell: php bin/console doctrine:schem:update -f
+  shell: php bin/console doctrine:schema:update -f
   args:
     chdir: "{{ application_path }}/releases/{{ app_version }}"
   when:
@@ -166,3 +172,9 @@
   when: dev_env
   args:
     chdir: "{{ application_path }}"
+
+- name: Delete worksapce
+  file:
+    path: "{{ temp_workspace }}"
+    state: absent
+  when: not dev_env

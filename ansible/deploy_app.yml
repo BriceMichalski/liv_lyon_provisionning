@@ -1,6 +1,6 @@
 ---
 
-- name: Application settings
+- name: Liv Lyon installation
   hosts: front
   roles:
     - { role: application/installApp, tags: [application]}
