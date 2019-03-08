@@ -1,44 +1,120 @@
 ---
-- name: Clone sources code
-  git:
-    repo: '{{ github_repo_sources }}'
-    dest: '{{ application_path }}'
-    version: '{{ application_version }}'
+- name: Create worksapce
+  file:
+    path: "{{ temp_workspace }}"
+    state: directory
+    mode: 0750
   when: not dev_env
 
-- name: Create app/config/parameters.yml
-  become: yes
-  template:
-      src: parameters.yml.j2
-      dest: "{{ application_path }}/app/config/parameters.yml"
+- name: Download sources code archive
+  get_url:
+    url: "{{ github_sources_url }}/archive/{{ application_branch }}.zip"
+    dest: "{{ temp_workspace }}/livlyonSources-{{ application_branch | regex_replace('/','-') }}.zip"
+  when: not dev_env
 
-- name: Composer Install
-  shell: cd {{ application_path }} && composer install --no-scripts --optimize-autoloader
+- name: Unzip {{ application_branch }} archive
+  unarchive:
+    src: "{{ temp_workspace }}/livlyonSources-{{ application_branch | regex_replace('/','-') }}.zip"
+    dest: "{{ temp_workspace }}/"
+    force: yes
+  when: not dev_env
 
-- name: Cache clear Prod && Dev
-  shell: cd {{ application_path }} && php bin/console c:c --env={{ item }}
+- name: Read composer.json file.
+  shell: "cat {{ temp_workspace }}/liv_lyon_sources-{{ application_branch | regex_replace('/','-') }}/composer.json"
+  register: json
+  when: not dev_env
+
+- name: get version number
+  set_fact:
+    app_version: "{{ (json.stdout | from_json).version }}"
+  when: not dev_env
+
+- name: Ansible check file exists example.
+  stat:
+    path: "{{ application_path }}/releases/{{ app_version }}/"
+  register: app_version_exist
+
+- name: Create Capistrano Directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: 0750
   with_items:
-    - "dev"
-    - "prod"
-
-- name: Update database schema
-  shell: cd {{ application_path }} && php bin/console doctrine:schem:update -f
-
-- name: Ensure app_dev.php access from host
+    - "{{ application_path }}"
+    - "{{ application_path }}/logs"
+    - "{{ application_path }}/current"
+    - "{{ application_path }}/shared"
+    - "{{ application_path }}/shared/places-img"
+    - "{{ application_path }}/shared/events-img"
+    - "{{ application_path }}/releases"
+    - "{{ application_path }}/releases/{{ app_version }}"
   become: yes
+
+- name: Copy {{ application_branch }} archive content in releases path
+  shell: "mv -f -u {{ temp_workspace }}/liv_lyon_sources-{{ application_branch | regex_replace('/','-') }}/* {{ application_path }}/releases/{{ app_version }}/"
+  when:
+    - 'not dev_env'
+    - 'not app_version_exist.stat.exists'
+
+- name: Create parameters.yml
   template:
-      src: app_dev.php.j2
-      dest: "{{ application_path }}/web/app_dev.php"
+    src: parameters.yml.j2
+    dest: "{{ application_path }}/releases/{{ app_version }}/app/config/parameters.yml"
+  when: not dev_env
+
+- name: composer update
+  composer:
+    command: update
+    working_dir: "{{ application_path }}"
+    arguments: --no-scripts
   when: dev_env
+
+- name: Composer install
+  composer:
+    command: install
+    working_dir: "{{ application_path }}/releases/{{ app_version }}"
+    arguments: --no-scripts --no-dev --optimize-autoloader
+  when: not dev_env
+
+- name: Cache clear Prod
+  shell: php bin/console cache:clear --env=prod --no-debug
+  when: not dev_env
+  args:
+    chdir: "{{ application_path }}/releases/{{ app_version }}"
+
+- name: delete logs path
+  shell: "rm -rf var/logs"
+  args:
+    chdir: "{{ application_path }}/releases/{{ app_version }}"
+
+- name: Create symlink
+  become: yes
+  file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    state: link
+    force: yes
+  with_items:
+    - { dest: '{{ application_path }}/releases/{{ app_version }}/var/logs', src: '{{ application_path }}/logs/' }
+    - { dest: '{{ application_path }}/releases/{{ app_version }}/web/img/event' , src: '{{ application_path }}/shared/events-img/' }
+    - { dest: '{{ application_path }}/releases/{{ app_version }}/web/img/place' , src: '{{ application_path }}/shared/places-img/' }
+    - { dest: '{{ application_path }}/current', src: '{{ application_path }}/releases/{{ app_version }}/' }
+    - { dest: '/var/www/html/web', src: '{{ application_path }}/current/web/' }
+  when: not dev_env
 
 - name: Ensure Apache is cache directory owner
   become: yes
   file:
-    path: "{{ application_path }}/var/cache/"
+    path: "{{ application_path }}/releases/{{ app_version }}/var/cache/"
     state: directory
     owner: '{{ apache_user }}'
     group: '{{ apache_group }}'
     mode: 775
+  when: "not dev_env"
 
 - name: Ensure Apache is sessions directory owner
   become: yes
@@ -58,6 +134,35 @@
     group: '{{ apache_group }}'
     mode: 775
 
-- name: Load Fixtures
-  shell: cd {{ application_path }} && php bin/console doctrine:fixtures:load -n
+- name: Update database schema
+  shell: php bin/console doctrine:schem:update -f
+  when:  dev_env
+  args:
+    chdir: "{{ application_path }}"
+
+- name: Update database schema for prod
+  shell: php bin/console doctrine:schem:update -f
+  args:
+    chdir: "{{ application_path }}/releases/{{ app_version }}"
+  when:
+    - not dev_env
+    - update_db_schem == "yes"
+
+- name: Update database schema for dev
+  shell: php bin/console doctrine:schem:update -f
   when: dev_env
+  args:
+    chdir: "{{ application_path }}"
+
+- name: Ensure app_dev.php access from host
+  become: yes
+  template:
+      src: app_dev.php.j2
+      dest: "{{ application_path }}/web/app_dev.php"
+  when: dev_env
+
+- name: Load Fixtures
+  shell: php bin/console doctrine:fixtures:load -n
+  when: dev_env
+  args:
+    chdir: "{{ application_path }}"

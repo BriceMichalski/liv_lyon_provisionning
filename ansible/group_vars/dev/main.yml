@@ -3,6 +3,30 @@
 ##     DEVELOPEMENT ENV PARAMETERS        ##
 ##                                        ##
 ############################################
+#############################
+##Deployment Configuration ##
+#############################
+github_sources_url: "https://github.com/BriceMichalski/liv_lyon_sources"
+temp_workspace: /tmp/deployment-workspace
+application_branch: feature/map
+application_path: /appli
+dev_env: false
+
+#############################
+##    App Configuration    ##
+#############################
+parameters:
+    database_host: 127.0.0.1
+    database_port: null
+    database_name: MAIN
+    database_user: liv_app
+    database_password: livapppass2019
+    mailer_transport: gmail
+    mailer_host: null
+    mailer_user: mailer.dev.brice@gmail.com
+    mailer_password: bar
+    secret: livlyon2019
+    paypal_env: sandbox #or production
 
 ###########################
 ##   SYSTEM PARAMETERS   ##
@@ -13,89 +37,54 @@ use_scl: true
 use_softwarecollections: true
 use_repo_doit: false
 remount_filesystems: false
-
 hebergement:          "local"
-vagrant:              true
-proxy_on:             false
-
-server:
-    download_path: /tmp
-
 system_timezone: "Europe/Paris"
-dev_env: true
 
-#############################
-##    App Configuration    ##
-#############################
-application_version: develop
-application_path: /vagrant/sources
-
-cache_path: '{{ application_path }}/var/cache'
-sessions_path: '{{ application_path }}/var/sessions'
-logs_path: '{{ application_path }}/var/logs'
-
-
-parameters:
-    database_host: 127.0.0.1
-    database_port: null
-    database_name: liv_lyon_data
-    database_user: liv_lyon_app
-    database_password: notsecurepasswordchangeitforprod
-    mailer_transport: gmail
-    mailer_host: 127.0.0.1
-    mailer_user: mailer.dev.brice@gmail.com
-    mailer_password: bar
-    secret: MySecretVerySecret
-    paypal_env: sandbox #or production
+###########################
+##   MYSQL PARAMETERS    ##
+###########################
+mysql_root_password: root
+mysql_databases:
+  - name: MAIN
+    encoding: utf8
+    collation: utf8_general_ci
+mysql_users:
+  - name: liv_app
+    host: "%"
+    password: livapppass2019
+    priv: "MAIN.*:ALL"
 
 #############################
 ##   Apache Configuration  ##
 #############################
-apache_listen_ip: "*"
 apache_listen_port: 80
-apache_listen_port_ssl: 443
+apache_vhosts_version: "2.4"
 apache_user: vagrant
 apache_group: vagrant
+apache_vhosts:
+  - servername: "local.dev"
+    documentroot: "{{ application_path}}/current/web"
+    extra_parameters: |
+          ProxyPassMatch ^/(.*\.php(/.*)?)$ "fcgi://127.0.0.1:9000{{ application_path}}/current/web"
+
+#############################
+##   PHP Configuration     ##
+#############################
+php_version: '7.2'
+php_memory_limit: "128M"
+php_max_execution_time: "90"
+php_upload_max_filesize: "256M"
+php_packages:
+  - php
+  - php-cli
+  - php-common
+  - php-devel
+  - php-gd
+  - php-mbstring
+  - php-pdo
+  - php-pecl-apcu
+  - php-xml
+  - php-intl
+php_enable_php_fpm: true
 php_fpm_pool_user: '{{ apache_user }}'
 php_fpm_pool_group: '{{ apache_group }}'
-
-apache_vhosts:
-  # Additional properties:
-  # 'serveradmin, serveralias, allow_override, options, extra_parameters'.
-  - servername: "local.dev"
-    documentroot: "{{ application_path }}/web"
-    extra_parameters: |
-      ProxyPassMatch ^/(.*\.php(/.*)?)$ "fcgi://127.0.0.1:9000{{ application_path }}/web"
-
-apache_user_and_group:
-  - {
-    regexp: "^User ",
-    line: "User {{ apache_user }}"
-  }
-  - {
-    regexp: "^Group ",
-    line: "Group {{ apache_group }}"
-  }
-#############################
-##    MYSLQ Configuration  ##
-#############################
-mysql_databases:
-   - name: "{{ parameters.database_name }}"
-     collation: utf8_general_ci
-     encoding: utf8
-     replicate: 1
-
-# Users.
-mysql_users:
-  # Removes all anonymous user accounts
-  - name: ''
-    host_all: yes
-    password: ''
-    state: absent
-
-  - name: '{{ parameters.database_user }}'
-    host: '127.0.0.1'
-    all_host: 'yes'
-    password: '{{ parameters.database_password }}'
-    priv: '{{ parameters.database_name }}.*:ALL'
-    update_password: always

@@ -1,5 +1,10 @@
 ---
+
 - name: Application settings
   hosts: front
   roles:
     - { role: application/installApp, tags: [application]}
+  vars_prompt:
+    - name: "update_db_schem"
+      prompt: "Update database ? (yes/no)"
+      private: no
