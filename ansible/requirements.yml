@@ -1,0 +1,11 @@
+---
+- src: geerlingguy.repo-remi
+- src: geerlingguy.firewall
+- src: geerlingguy.mysql
+- src: geerlingguy.git
+- src: geerlingguy.apache
+- src: geerlingguy.php-versions
+- src: geerlingguy.php
+- src: geerlingguy.php-mysql
+- src: geerlingguy.apache-php-fpm
+- src: geerlingguy.composer

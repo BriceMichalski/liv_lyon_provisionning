@@ -4,32 +4,33 @@
   become: yes
   roles:
     - { role: common/system_setting, tags: [always, system] }
-    - { role: common/remi-rpm, tags: [always, system] }
+    - { role: geerlingguy.repo-remi }
+    - { role: geerlingguy.firewall }
 
 - name: Install MySQL
   hosts: database
   become: yes
   roles :
-    - { role: buildingBlocks/mysql-server, tags: [database] }
-
-- name: Install Apache
-  hosts: front
-  become: yes
-  roles:
-    - { role: buildingBlocks/apache, tags: [webserver] }
+     - { role: geerlingguy.mysql }
 
 - name: Install Git
   hosts: front
   become: yes
   roles:
-    - { role: buildingBlocks/git, tags: [webserver] }
+    - { role: geerlingguy.git }
+
+- name: Install Apache
+  hosts: front
+  become: yes
+  roles:
+    - { role: geerlingguy.apache }
 
 - name: Install Php & Composer
   hosts: front
   become: yes
   roles:
-    - { role: buildingBlocks/php-version, tags: [webserver] }
-    - { role: buildingBlocks/php, tags: [webserver] }
-    - { role: buildingBlocks/php-mysql, tags: [webserver] }
-    - { role: buildingBlocks/apache-php-fpm, tags: [webserver]}
-    - { role: buildingBlocks/composer, tags: [webserver]}
+    - { role: geerlingguy.php-versions }
+    - { role: geerlingguy.php }
+    - { role: geerlingguy.php-mysql }
+    - { role: geerlingguy.apache-php-fpm }
+    - { role: geerlingguy.composer }
