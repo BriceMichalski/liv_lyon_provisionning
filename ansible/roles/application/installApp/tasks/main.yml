@@ -28,10 +28,14 @@
   when: not dev_env
 
 - name: Unzip {{ application_branch }} archive
+  become: yes
   unarchive:
     src: "{{ temp_workspace }}/livlyonSources-{{ application_branch | regex_replace('/','-') }}.zip"
     dest: "{{ temp_workspace }}/"
     force: yes
+    remote_src: yes
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
   when: not dev_env
 
 - name: Read composer.json file.
@@ -67,6 +71,7 @@
     - "{{ application_path }}/releases"
     - "{{ application_path }}/releases/{{ app_version }}"
   become: yes
+  when: not dev_env
 
 - name: Copy {{ application_branch }} archive content in releases path
   shell: "mv -f -u {{ temp_workspace }}/liv_lyon_sources-{{ application_branch | regex_replace('/','-') }}/* {{ application_path }}/releases/{{ app_version }}/"
@@ -80,16 +85,10 @@
     dest: "{{ application_path }}/releases/{{ app_version }}/app/config/parameters.yml"
   when: not dev_env
 
-- name: composer update
-  composer:
-    command: update
-    working_dir: "{{ application_path }}"
-    arguments: --no-scripts
-  when: dev_env
-
 - name: Ensure Apache is sessions directory owner
   become: yes
   shell: "chmod 777 -R {{ application_path }}/releases/{{ app_version }}/web/"
+  when: not dev_env
 
 - name: Composer install
   shell: 'composer install --no-scripts'
@@ -108,11 +107,13 @@
   when: not dev_env
   args:
     chdir: "{{ application_path }}/releases/{{ app_version }}"
+  when: not dev_env
 
 - name: delete logs path
   shell: "rm -rf var/logs"
   args:
     chdir: "{{ application_path }}/releases/{{ app_version }}"
+  when: not dev_env
 
 - name: Create symlink
   become: yes
@@ -121,6 +122,7 @@
     dest: "{{ item.dest }}"
     owner: "{{ apache_user }}"
     group: "{{ apache_group }}"
+    mode: 0755
     state: link
     force: yes
   with_items:
@@ -138,13 +140,31 @@
     state: directory
     owner: '{{ apache_user }}'
     group: '{{ apache_group }}'
+    recurse: yes
     mode: 775
+  when: not dev_env
 
-- name: Update database schema
-  shell: php bin/console doctrine:schem:update -f
-  when:  dev_env
-  args:
-    chdir: "{{ application_path }}"
+- name: Ensure Apache is cache directory owner
+  become: yes
+  file:
+    path: '{{ application_path }}/releases/{{ app_version }}/var/cache/'
+    state: directory
+    recurse: yes
+    owner: '{{ apache_user }}'
+    group: '{{ apache_group }}'
+    mode: 775
+  when: not dev_env
+
+- name: Ensure Apache is cache directory owner
+  become: yes
+  file:
+    path: '{{ application_path }}/releases/{{ app_version }}/var/logs'
+    state: directory
+    recurse: yes
+    owner: '{{ apache_user }}'
+    group: '{{ apache_group }}'
+    mode: 775
+  when: not dev_env
 
 - name: Update database schema for prod
   shell: php bin/console doctrine:schema:update -f
